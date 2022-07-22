@@ -19,7 +19,7 @@ app.get('/api/persons', (request, response, next) => {
         .then(persons => {
             response.json(persons)
         })
-        .catch(err => next(err))
+        .catch(error => next(error))
 })
 
 app.get('/api/persons/:id', (request, response, next) => { 
@@ -33,7 +33,7 @@ app.get('/api/persons/:id', (request, response, next) => {
                 response.status(404).end()
             }
         })
-        .catch(err => next(err))
+        .catch(error => next(error))
 })
 
 app.get('/info', (request, response, next) => {
@@ -45,14 +45,11 @@ app.get('/info', (request, response, next) => {
             <br>
             <div>${date}</div>`)
         })
-        .catch(err => next(err))
+        .catch(error => next(error))
 
 })
 
 app.post('/api/persons', (request, response, next) => {
-    if ((!request.body.name) || (!request.body.number)) 
-        return response.status(400).send({ error: 'Name and/or number is missing' })
-
     const newPerson = new Person({
         name: request.body.name,
         number: request.body.number,
@@ -61,7 +58,7 @@ app.post('/api/persons', (request, response, next) => {
         .then(savedPerson => {
             response.json(savedPerson)
         })
-        .catch(err => next(err))
+        .catch(error => next(error))
 })
 
 app.delete('/api/persons/:id', (request, response, next) => {
@@ -70,37 +67,35 @@ app.delete('/api/persons/:id', (request, response, next) => {
         .then(result => {
             response.status(204).end()
         })
-        .catch(err => next(err))
+        .catch(error => next(error))
 })
 
 app.put('/api/persons/:id', (request, response, next) => {
     const id = request.params.id
-    const body = request.body
+    const { name, number } = request.body
 
-    const person = {
-        name: body.name,
-        number: body.number
-    }
-
-    Person.findByIdAndUpdate(id, person, { new: true })
+    Person.findByIdAndUpdate(id, { name, number, id }, { new: true, runValidators: true, context: 'query' })
         .then(updatedPerson => {
             response.json(updatedPerson)
         })
-        .catch(err => next(err))
+        .catch(error => next(error))
  })
 
 const unknownEndpoint = (req, res) => {
     res.status(404).send({ error: 'unknown endpoint' })
 }
 
-const errorHandler = (err, req, res, next) => {
-    console.log(err.message)
+const errorHandler = (error, request, response, next) => {
+    console.log(error.message)
 
     if (error.name === 'CastError'){
         return response.status(400).send({ error: 'malformatted id' })
     }
+    if (error.name === "ValidationError") {
+        return response.status(400).json({ error: error.message })
+    }
     
-    next(err)
+    next(error)
 }
 
 app.use(unknownEndpoint)
